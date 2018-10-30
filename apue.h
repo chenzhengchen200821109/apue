@@ -15,6 +15,8 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/stat.h>
+#include <sys/select.h>
+#include <sys/inotify.h>
 #include <semaphore.h>
 #include <fcntl.h>
 
