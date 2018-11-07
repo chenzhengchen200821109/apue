@@ -3,8 +3,6 @@
 #include "../apue.h"
 #include <limits.h>
 
-#define EVENT_BUFFER_LEN ((sizeof(struct inotify_event) + NAME_MAX + 1) * 10)
-
 extern int keep_running;
 static int watched_items;
 
@@ -39,6 +37,7 @@ int close_inotify_fd(int fd)
  */
 void handle_event(queue_entry_t event)
 {
+    printf("get here\n");
     /* If the event was associated with a filename, 
      * we will store it here 
      */
@@ -163,7 +162,7 @@ void handle_event(queue_entry_t event)
 void handle_events(queue_t q)
 {
     queue_entry_t event;
-    while (!queue_empty(q)) {
+    while (!(queue_empty(q))) {
         event = queue_dequeue(q);
         handle_event(event);
         free(event);
@@ -177,7 +176,7 @@ void handle_events(queue_t q)
 int read_events(queue_t q, int fd)
 {
     //char buffer[16384];
-    char buffer[EVENT_BUFFER_LEN + 1];
+    char buffer[16384];
     size_t index;
     struct inotify_event *pevent;
     queue_entry_t event;
@@ -187,8 +186,8 @@ int read_events(queue_t q, int fd)
 
     if ((r = read(fd, buffer, 16384)) <= 0)
         return r; // read() fails
-    else if(r == EVENT_BUFFER_LEN + 1)
-        printf("\ntoo many events occurred, only ten of them handled\n");
+    else if(r == 16384)
+        printf("too many events occurred, only ten of them handled\n");
 
     index = 0;
     q_event_size = sizeof(struct queue_entry);
@@ -203,7 +202,7 @@ int read_events(queue_t q, int fd)
         index += event_size;
         count++;
     }
-    printf ("\n%d events queued\n", count);
+    printf ("%d events queued\n", count);
 
     return count;
 }
@@ -226,7 +225,7 @@ int process_inotify_events (queue_t q, int fd)
 	        int ret;
 	        if ((ret = read_events(q, fd)) < 0)
                 break;
-            else 
+            //else 
                 handle_events(q);
         }
     }
