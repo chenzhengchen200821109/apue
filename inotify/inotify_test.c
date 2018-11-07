@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
          */
         int index;
         wd = 0;
-        printf("\n");
+        //printf("\n");
         for(index = 1; (index < argc) && (wd >= 0); index++) {
             wd = watch_directory(inotify_fd, argv[index], IN_ALL_EVENTS);
             /*
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
              */
 	        process_inotify_events(q, inotify_fd);
 	    }
-        printf ("\nTerminating\n");
+        printf ("Terminating\n");
 
         /* 
          * Finish up by closing the fd, destroying the queue, and returning a 
