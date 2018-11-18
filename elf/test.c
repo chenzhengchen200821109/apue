@@ -13,5 +13,8 @@ int main()
     print_string(str0);
     print_string(str1);
 
+    //while (1)
+    //    ;
+
     return 0;
 }
