@@ -10,6 +10,13 @@ char* StackBottom;
 
 //#define StackSize (StackBottom - StackTop + 1)
 
+typedef struct Notification
+{
+    void* Base;
+    size_t Size;
+    struct Notification* Next;
+} Notification;
+
 typedef struct State
 {
     struct State* Previous;
@@ -76,9 +83,6 @@ size_t Choice(size_t N)
 
     PushState();
     setjmp(TopState->Environment);
-    //if (LastChoice == N)
-    //    PopState();
-    //return LastChoice;
     LastChoice = TopState->LastChoice;
     if (LastChoice == (size_t)N)
         PopState();
@@ -112,3 +116,9 @@ void Backtrack()
     longjmp(TopState->Environment, 1);
 }
 
+void ClearChoices(void)
+{
+    while (TopState != &Head)
+        PopState();
+    LastChoice = 0;
+}

@@ -1,7 +1,13 @@
 #include <stdio.h>
 #include <string.h>
 #include "cback.h"
+#include <assert.h>
 
+extern char* StackBottom;
+
+/**
+ * Match() returns 1 if matched otherwise 0.
+ */
 int Match(const char* s, char* p)
 {
     if (!s || !p)
@@ -15,7 +21,7 @@ int Match(const char* s, char* p)
         } else if (*p++ != *s++)
             Backtrack();
     }
-    if (*s)
+    if (*s) /* still has some characters in s, back to line 9 */
         Backtrack();
     ClearChoices();
     return 1;
@@ -23,7 +29,13 @@ int Match(const char* s, char* p)
 
 int main()
 {
-    printf("Hello world\n");
+    char str[] = "abababababc";
+    char pattern[] = "ab*c";
+    int result;
+
+    Backtracking(result = Match(str, pattern));
+    assert(result == 1); 
+
     return 0;
 }
 

@@ -28,6 +28,18 @@ size_t Choice(size_t N);
  /**
   * Clear all pending Choice-calls.
   */
- //void ClearChoices();
+ void ClearChoices();
+
+ /**
+  * Deletes all notifications.
+  */
+ void ClearNotifications(void);
+
+ /**
+  * Deletes a possible notification of the storage pointed to by Base.
+  */
+ void RemoveNotification(void* Base);
+
+ void* NotifyStorage(void* Base, size_t Size);
 
 #endif
