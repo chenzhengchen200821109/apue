@@ -2,7 +2,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <linux/user.h>
+#include <sys/user.h>
 #include <sys/syscall.h>
 int main()
 {   pid_t child;

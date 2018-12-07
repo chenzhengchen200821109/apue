@@ -28,5 +28,6 @@ int _start()
 {
     _write(1, "I am the payload wha has hijacked your process\n", 48);
     Exit(0);
+    return 0;
 }
 

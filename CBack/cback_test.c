@@ -8,14 +8,15 @@ void test()
     int i;
     int j;
     i = Choice(3);
-    j = Choice(1);
+    j = Choice(2);
     printf("i = %d, j = %d\n", i, j);
-    //printf("i = %d\n", i);
     Backtrack();
 }
 
 int main()
 {
     Backtracking(test());
+
+    return 0;
 }
 

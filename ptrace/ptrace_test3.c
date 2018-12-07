@@ -2,8 +2,11 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <linux/user.h>
+#include <sys/user.h>
 #include <sys/syscall.h>
+#include <string.h>
+#include <stdlib.h>
+
 const int long_size = sizeof(long);
 void reverse(char *str)
 {   int i, j;

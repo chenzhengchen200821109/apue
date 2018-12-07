@@ -33,8 +33,8 @@ typedef struct handle
     struct user_regs_struct pt_reg;
 } handle_t;
 
-static inline volatile void* evil_map(void *, size_t, int, int, int, off_t) __attribute__((aligned(8), __always_inline__));
-uint32_t injection_code(void *) __attribute__((aligned(8)));
+static inline volatile void* evil_mmap(void *, size_t, int, int, int, off_t) __attribute__((aligned(8), always_inline));
+void injection_code(void *) __attribute__((aligned(8)));
 uint32_t get_text_base(pid_t);
 int pid_write(int, void *, const void *, size_t);
 char* create_fn_shellcode(void (*fn)(), size_t len);
@@ -109,11 +109,11 @@ static inline volatile void* evil_mmap(void* addr, size_t len, int prot, int fla
  * when compile, value of injection_code() must be smaller than value
  * of get_text_base() because injection_code() has been define first.
  */
-uint32_t injection_code(void* vaddr)
+void injection_code(void* vaddr)
 {
     volatile void* mem;
     mem = evil_mmap(vaddr, 8192, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
-    __asm__ __volatile__("int3");
+    __asm__ volatile ("int3");
 }
 
 #define MAX_PATH 512
@@ -134,14 +134,14 @@ uint32_t get_text_base(pid_t pid)
         return 1;
     }
     while (fgets(line, sizeof(line), fd)) {
-        if (!strstr(line, "rxp"))
+        if (!strstr(line, "r-xp"))
             continue;
         /*
          * The alloca() function allocates size bytes in the stack fram
          * of the caller. This temporary space is automatically freed
          * when the function that called alloca() returns to its caller.
          */
-        for (i = 0, start = alloca(32), p = line; *p != ' '; i++, p++)
+        for (i = 0, start = alloca(32), p = line; *p != '-'; i++, p++)
             start[i] = *p;
         start[i] = '\0';
         base = strtoul(start, NULL, 16);
@@ -157,7 +157,7 @@ uint32_t get_text_base(pid_t pid)
 char* create_fn_shellcode(void (*fn)(), size_t len)
 {
     size_t i;
-    char* shellcode = (uint8_t *)malloc(len);
+    char* shellcode = (char *)malloc(len);
     char* p = (char *)fn;
     for (i = 0; i < len; i++)
         *(shellcode + i) = *p++;
@@ -167,26 +167,26 @@ char* create_fn_shellcode(void (*fn)(), size_t len)
 int pid_read(int pid, void* dst, const void* src, size_t len)
 {
     int sz = len / sizeof(void *);
+    //int sz = len / sizeof(long);
     unsigned char* s = (unsigned char *)src;
     unsigned char* d = (unsigned char *)dst;
-    int word;
+    long word;
 
     while (sz > 0) {
         errno = 0;
-        word = ptrace(PTRACE_PEEKTEXT, pid, s, NULL);
-        if (word == -1 && errno) {
+        if ((word = ptrace(PTRACE_PEEKTEXT, pid, s, NULL)) < 0 && errno != 0) {
             fprintf(stderr, "pid_read failed, pid: %d: %s\n", pid, strerror(errno));
             goto fail;
         }
-        *(int *)d = word;
-        s += sizeof(int);
-        d += sizeof(int);
+        *(long *)d = word;
+        s += sizeof(long);
+        d += sizeof(long);
         sz--;
     }
     return 0;
 fail:
     perror("PTRACE_PEEKTEXT");
-    return 1;
+    return -1;
 }
 
 int pid_write(int pid, void* dest, const void* src, size_t len)
@@ -208,14 +208,14 @@ int pid_write(int pid, void* dest, const void* src, size_t len)
     return 0;
 failed:
     perror("PTRACE_POKETEXT");
-    return 1;
+    return -1;
 }
 
 int main(int argc, char* argv[])
 {
     handle_t h;
     unsigned int shellcode_size = f2-f1; //
-    int i, fd, status;
+    int fd, status;
     char* executable, *origcode;
     struct stat st;
     Elf32_Ehdr* ehdr;
