@@ -5,7 +5,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-char* StackTop;
+static char* StackTop;
 char* StackBottom;
 
 //#define StackSize (StackBottom - StackTop + 1)
@@ -28,10 +28,10 @@ typedef struct State
     void* Stack;               // saved stack
 } State;
 
-State Head;
-State* TopState = &Head;
-State* Previous;
-size_t LastChoice;
+static State Head;
+static State* TopState = &Head;
+static State* Previous;
+static size_t LastChoice;
 void (*Fiasco)();
 
 static void PushState()
@@ -43,7 +43,7 @@ static void PushState()
     TopState = (State *)malloc(sizeof(State));
     if (!TopState) {
         perror("malloc");
-        exit(-1);
+        exit(EXIT_FAILURE);
     }
     TopState->Previous = Previous;
     /* initialized to be one */;
@@ -60,7 +60,7 @@ static void PushState()
         perror("malloc");
         exit(-1);
     }
-    memcpy(TopState->Stack, (void *)StackTop, TopState->StackSize);
+    memcpy(TopState->Stack, StackTop, TopState->StackSize);
 }
 
 static void PopState()
