@@ -33,22 +33,12 @@ int main(int argc, char* argv[])
         exit(-1);
     }
 
-    //if (ptrace(PTRACE_CONT, traced_process, NULL, NULL) < 0) {
-    //    perror("ptrace cont failed");
-    //    exit(-1);
-    //}
-    //wait(NULL);
-    //if (ptrace(PTRACE_GETREGS, traced_process, NULL, &regs) < 0) {
-    //    perror("ptrace get regs failed");
-    //    exit(-1);
-    //}
-
     errno = 0;
     if ((ins = ptrace(PTRACE_PEEKTEXT, traced_process, regs.eip, NULL)) < 0 && errno != 0) {
         perror("ptrace peek text failed\n");
         exit(-1);
     }
-    printf("EIP: %lx instruction executed: %lx\n", regs.eip, ins);
+    printf("EIP: 0x%lx instruction executed: %lx\n", regs.eip, ins);
     ptrace(PTRACE_DETACH, traced_process, NULL, NULL);
 
     return 0;

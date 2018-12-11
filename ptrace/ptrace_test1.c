@@ -40,6 +40,9 @@ int main()
                     insyscall = 0;
                 }
             }
+            /*
+             * child process stoped prior here.
+             */
             ptrace(PTRACE_SYSCALL, child, NULL, NULL);
         }
     }
