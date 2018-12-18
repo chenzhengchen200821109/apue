@@ -153,6 +153,7 @@ void Timingwheel_deleteTimer(struct Timer* timer, pid_t* thread)
 void tick(pid_t* thread)
 {
     int cur_slot = Head.cur_slot;
+    int nslots = Head.nslots;
     struct Timer* cur = Head.head[cur_slot];
 
     while (cur) {
@@ -160,13 +161,14 @@ void tick(pid_t* thread)
             cur->rotation--;
             cur = cur->next;
         } else {
-            struct Timer* next = cur->next;
-            cur = next;
             Timingwheel_handleTimer(cur);
-            Timingwheel_deleteTimer(cur, thread);
+            Head.head[cur_slot] = cur->next;
+            free(cur);
+            cur = Head.head[cur_slot];
         }
     }
     cur_slot++;
+    cur_slot = cur_slot % nslots;
     Head.cur_slot = cur_slot;
 }
 
