@@ -1,3 +1,6 @@
+/*
+ * 通过此程序向目标程序注入一段代码。
+ */ 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -18,6 +21,7 @@
 #define WORD_ALIGN(x) ((x + 7) & ~7)
 #define BASE_ADDRESS 0x00100000
 
+//32-bit arch
 typedef struct handle 
 {
     Elf32_Ehdr* ehdr;
@@ -39,47 +43,42 @@ uint32_t get_text_base(pid_t);
 int pid_write(int, void *, const void *, size_t);
 char* create_fn_shellcode(void (*fn)(), size_t len);
 
-void* f1 = injection_code;
-void* f2 = get_text_base;
+void* f1 = (void *)injection_code;
+void* f2 = (void *)get_text_base;
 
 static inline volatile int evil_write(int fd, char* buf, size_t len)
 {
     int ret;
     __asm__ volatile(
-            "movl $4, %%eax\n"
-            "movl %0, %%ebx\n"
-            "movl %1, %%ecx\n"
-            "movl %2, %%edx\n"
-            "int $0x80" : : "g"(fd), "g"(buf), "g"(len));
-    asm("movl $0, %%eax \n" : "=r"(ret));
+            "int $0x80" 
+            : "=a"(ret) 
+            : "0"(4), "b"(fd), "c"(buf), "d"(len)
+            : "memory", "cc"
+            );
     return ret;
 }
 
 static inline volatile int evil_fstat(int fd, struct stat* buf)
 {
     int ret;
-
-    __asm__ volatile (
-            "movl $108, %%eax\n"
-            "movl %0, %%ebx\n"
-            "movl %1, %%ecx\n"
-            "int $0x80" : : "g"(fd), "g"(buf));
-    __asm__ volatile (
-            "movl %%eax, %0\n" : "=r"(ret));
+    __asm__ volatile(
+            "int $0x80"
+            : "=a"(ret)
+            : "0"(108), "b"(fd), "c"(buf)
+            : "memory", "cc"
+            );
     return ret;
 }
 
 static inline volatile int evil_open(const char* path, int flags)
 {
     int ret;
-
-    __asm__ volatile (
-            "movl $5, %%eax\n"
-            "movl %0, %%ebx\n"
-            "movl %1, %%ecx\n"
-            "int $0x80" : : "g"(path), "g"(flags));
-    __asm__ volatile (
-            "movl %%eax, %0\n" : "=r"(ret));
+    __asm__ volatile(
+            "int $0x80"
+            : "=a"(ret)
+            : "0"(5), "b"(path), "c"(flags)
+            : "memory", "cc"
+            );
     return ret;
 }
 
@@ -87,21 +86,34 @@ static inline volatile void* evil_mmap(void* addr, size_t len, int prot, int fla
 {
     int ret;
 
-    int mmap_fd = fd;
-    off_t mmap_offset = offset;
-    int mmap_flags = flags;
-
-    __asm__ volatile (
+    /* ----------------- NOTE ---------------------------
+     * 当输入参数小于或者等于5个时，linux用寄存器传递参数。
+     *     Linux takes system call arguments in registers:
+     *     syscall number   %eax
+     *     arg 1            %ebx
+     *     arg 2            %ecx
+     *     arg 3            %edx
+     *     arg 4            %esi
+     *     arg 5            %edi
+     * 当输入参数大于5个时，把参数按照顺序放入连续内存中，
+     * 并把这块内存的首地址放入%ebx中。
+     */
+    __asm__ volatile(
+            "subl $0x18, %%esp\n"
+            "movl %1, (%%esp)\n"
+            "movl %2, 0x4(%%esp)\n"
+            "movl %3, 0x8(%%esp)\n"
+            "movl %4, 0xc(%%esp)\n"
+            "movl %5, 0x10(%%esp)\n"
+            "movl %6, 0x14(%%esp)\n"
+            "movl %%esp, %%ebx\n"
             "movl $90, %%eax\n"
-            "movl %0, %%ebx\n"
-            "movl %1, %%ecx\n"
-            "movl %2, %%edx\n"
-            "movl %3, %%esi\n"
-            "movl %4, %%edi\n"
-            "movl %5, %%ebp\n"
-            "int $0x80" : : "g"(addr), "g"(len), "g"(prot), "g"(mmap_flags), "g"(mmap_fd), "g"(mmap_offset));
-    __asm__ volatile (
-            "movl %%eax, %0\n" : "=r"(ret));
+            "int $0x80\n"
+            "addl $0x18, %%esp"
+            : "=a"(ret)    
+            : "a"(addr), "b"(len), "c"(prot), "d"(flags), "S"(fd), "D"(offset)
+            : "memory", "cc"
+            );
     return (void *)ret;
 }
 
@@ -112,7 +124,9 @@ static inline volatile void* evil_mmap(void* addr, size_t len, int prot, int fla
 void injection_code(void* vaddr)
 {
     volatile void* mem;
-    mem = evil_mmap(vaddr, 8192, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+    //mem = evil_mmap(vaddr, 8192, (PROT_READ | PROT_WRITE | PROT_EXEC), (MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS), -1, 0);
+    mem = evil_mmap((void *)BASE_ADDRESS, 8192, (PROT_READ | PROT_WRITE | PROT_EXEC), (MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS), -1, 0);
+    //产生中断异常，返回到调试进程
     __asm__ volatile ("int3");
 }
 
@@ -128,6 +142,7 @@ uint32_t get_text_base(pid_t pid)
     FILE* fd;
     int i;
     Elf32_Addr base;
+
     snprintf(maps, MAX_PATH, "/proc/%d/maps", pid);
     if ((fd = fopen(maps, "r")) == NULL) {
         fprintf(stderr, "Cannot open %s for reading: %s\n", maps, strerror(errno));
@@ -141,7 +156,7 @@ uint32_t get_text_base(pid_t pid)
          * of the caller. This temporary space is automatically freed
          * when the function that called alloca() returns to its caller.
          */
-        for (i = 0, start = alloca(32), p = line; *p != '-'; i++, p++)
+        for (i = 0, start = (char *)alloca(32), p = line; *p != '-'; i++, p++)
             start[i] = *p;
         start[i] = '\0';
         base = strtoul(start, NULL, 16);
@@ -164,21 +179,32 @@ char* create_fn_shellcode(void (*fn)(), size_t len)
     return shellcode;
 }
 
+/**
+ * read memory space of a process whose PID equals pid.
+ */
 int pid_read(int pid, void* dst, const void* src, size_t len)
 {
-    int sz = len / sizeof(void *);
-    //int sz = len / sizeof(long);
+    //sz必须是4的倍数
+    int sz = len / sizeof(long);
     unsigned char* s = (unsigned char *)src;
     unsigned char* d = (unsigned char *)dst;
-    long word;
+    //long word;
+
+    union u {
+        long word;
+        char chars[sizeof(long)];
+    } data;
 
     while (sz > 0) {
         errno = 0;
-        if ((word = ptrace(PTRACE_PEEKTEXT, pid, s, NULL)) < 0 && errno != 0) {
+        printf("s = %p\n", s);
+        printf("d = %p\n", d);
+        if ((data.word = ptrace(PTRACE_PEEKTEXT, pid, s, NULL)) < 0 && errno != 0) {
             fprintf(stderr, "pid_read failed, pid: %d: %s\n", pid, strerror(errno));
             goto fail;
         }
-        *(long *)d = word;
+        memcpy(d, data.chars, sizeof(long));
+        //*(long *)d = word;
         s += sizeof(long);
         d += sizeof(long);
         sz--;
@@ -191,19 +217,26 @@ fail:
 
 int pid_write(int pid, void* dest, const void* src, size_t len)
 {
-    int quot = len / sizeof(void *);
+    long sz = len / sizeof(long);
     unsigned char* s = (unsigned char *)src;
     unsigned char* d = (unsigned char *)dest;
-    while (quot > 0) {
+
+    union u {
+        long val;
+        char chars[sizeof(long)];
+    } data;
+    while (sz > 0) {
+        memcpy(data.chars, s, sizeof(long));
         /* 
          * PTRACE_POKETEXT - Copy the word data to the address 
          * addr in the tracee's memory.
+         * 注意data参数。
          */
-        if (ptrace(PTRACE_POKETEXT, pid, d, s) == -1)
+        if (ptrace(PTRACE_POKETEXT, pid, d, data.val) == -1)
             goto failed;
-        s += sizeof(void *);
-        d += sizeof(void *);
-        quot--;
+        s += sizeof(long);
+        d += sizeof(long);
+        sz--;
     }
     return 0;
 failed:
@@ -214,7 +247,8 @@ failed:
 int main(int argc, char* argv[])
 {
     handle_t h;
-    unsigned int shellcode_size = f2-f1; //
+    unsigned int shellcode_size = (unsigned int)f2 - (unsigned int)f1; //
+    printf("shellcode_size = %d\n", shellcode_size);
     int fd, status;
     char* executable, *origcode;
     struct stat st;
@@ -236,21 +270,36 @@ int main(int argc, char* argv[])
     /* 
      * shellcode_size is actually the size of injection_code().
      */
-    shellcode_size += 4;
+    shellcode_size += 4; //为了后边调用pid_read()时和pid_write()时规整为4的倍数。
+    printf("shellcode_size = %d\n", shellcode_size);
+    //h.shellcode指向一段shellcode，即函数injection_code().
     h.shellcode = create_fn_shellcode((void *)&injection_code, shellcode_size);
-    origcode = alloca(shellcode_size);
+    origcode = (char *)alloca(shellcode_size);
+    //save original code of target.
     if (pid_read(h.pid, (void *)origcode, (void *)h.base, shellcode_size) < 0)
         exit(1);
-    if (pid_write(h.pid, (void *)h.base, (void *)h.shellcode, shellcode_size) < 0)
+    //write shellcode in target's process space.
+    if (pid_write(h.pid, (void *)(h.base), (void *)h.shellcode, shellcode_size) < 0)
         exit(1);
+
+    char* checkcode = (char *)alloca(shellcode_size);
+    if (pid_read(h.pid, (void *)checkcode, (void *)(h.base), shellcode_size) < 0)
+        exit(1);
+
     if (ptrace(PTRACE_GETREGS, h.pid, NULL, &h.pt_reg) < 0) {
         perror("PTRACE_GETREGS");
         exit(1);
     }
+    //target will re-execute here. Yes function injection_code() begin to start.
+    //But there is ONE problem. What if function injection_code() has a few arguments?
     h.pt_reg.eip = h.base;
-    h.pt_reg.edi = BASE_ADDRESS;
+    //h.pt_reg.eax = BASE_ADDRESS; //%ebx MUST be set to accomplish function evil_mmap().
     if (ptrace(PTRACE_SETREGS, h.pid, NULL, &h.pt_reg) < 0) {
         perror("PTRACE_SETREGS");
+        exit(1);
+    }
+    if (ptrace(PTRACE_GETREGS, h.pid, NULL, &h.pt_reg) < 0) {
+        perror("PTRACE_GETREGS");
         exit(1);
     }
     if (ptrace(PTRACE_CONT, h.pid, NULL, NULL) < 0) {
@@ -258,9 +307,9 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
-    wait(&status);
-    if (WSTOPSIG(status) != SIGTRAP) {
-        printf("Something went wrong\n");
+    waitpid(h.pid, &status, 0);
+    if (!WIFSTOPPED(status)) {
+        printf("something went wrong\n");
         exit(1);
     }
     if (pid_write(h.pid, (void *)h.base, (void *)origcode, shellcode_size) < 0)

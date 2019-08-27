@@ -1,3 +1,6 @@
+/*
+ * 将向此程序注入一段代码。
+ */ 
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/prctl.h>
@@ -12,10 +15,11 @@ int main()
         perror("prctl");
         exit(-1);
     }
+    long a;
     while (1) {
-        printf("I am working\n");
-        sleep(5);
+        //printf("I am working\n");
+        //sleep(5);
+        a++;
     }
-
     return 0;
 }

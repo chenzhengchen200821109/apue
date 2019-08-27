@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <sys/mman.h>
 
+static inline volatile void* user_mmap(void *, size_t, int, int, int, off_t) __attribute__((always_inline));
+
 static inline volatile int user_write(int fd, char* buf, unsigned int len)
 {
     int ret;
@@ -74,7 +76,7 @@ int main()
     char* p;
     char* p0;
     user_write(1, "I am the payload wha has hijacked your process\n", 48);
-    p = (char *)user_mmap(0, 8192, (PROT_READ | PROT_WRITE | PROT_EXEC), (MAP_PRIVATE | MAP_ANONYMOUS), -1, 0);
+    p = (char *)user_mmap((void *)0x100000, 8192, (PROT_READ | PROT_WRITE | PROT_EXEC), (MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED), -1, 0);
     p[0] = 'H';
     p[1] = 'e';
     p[2] = 'l';
