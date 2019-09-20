@@ -1,5 +1,7 @@
+#ifndef __BINARYFILE_H__
+#define __BINARYFILE_H__ 
+
 #include <string>
-#include <vector>
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -14,17 +16,16 @@ class BinaryFile
     public:
         explicit BinaryFile(const char* name);
         explicit BinaryFile(const std::string& name);
-        off_t Size() const;
-        std::string HexBytes(off_t offset, size_t size) const;
-        std::vector<uint8_t> RawBytes(off_t offset, size_t size) const;
-        void RawBytes(off_t offset, size_t size, uint8_t* buf);
+        uint32_t Size() const;
         ~BinaryFile();
-        std::string ToStringHex() const;
+        std::string HexFormat(uint32_t offset, uint32_t size) const;
+        uint8_t* BasePoint(uint32_t offset);
     private:
-        //std::string hexStr_;
         FILE* file_;
-        off_t size_;
+        uint32_t size_;
+        uint8_t* buf_;
 };
 
-
 }//namespace elfview 
+
+#endif

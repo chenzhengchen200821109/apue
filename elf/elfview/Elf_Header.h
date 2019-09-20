@@ -1,6 +1,10 @@
+#ifndef __ELF_HEADER_H__
+#define __ELF_HEADER_H__ 
+
 #include <elf.h>
+#include <stddef.h>
 #include <string>
-#include "Elf_Ident.h"
+#include <iostream>
 #include "BinaryFile.h"
 #include "Util.h"
 
@@ -10,53 +14,60 @@ namespace elfview
 class Elf_Header
 {
     public:
-        explicit Elf_Header(const char* name)
+        explicit Elf_Header(BinaryFile* file)
             : offset_(0)
             , size_(sizeof(Elf32_Ehdr))
-            , file_(name) 
+            , file_(file) 
         {
-            file_.RawBytes(0, size_, (uint8_t *)&elf_header_);
-            elf_header_str_ = file.RawBytes(0, size_);
-
+            header_ = (Elf32_Ehdr *)file_->BasePoint(offset_);
         }
-        explicit Elf_Header(const std::string& name)
-            : Elf_Header(name.c_str())
-        {
         
-        }
         ~Elf_Header()
         {
             
         }
-        std::string FileOffset() const
+        std::string Elf_Header_Format()
         {
-            return detail::ToHexWord(offset_);
+            return file_->HexFormat(offset_, size_);
         }
-        std::string Data() const
+        void Elf_Header_Summary_Format()
         {
-            return elf_header_str_;
+            std::cout << '\t' << "ident: " << Elf_Header_Ident_Format() << std::endl;
+            std::cout << '\t' << "type: " << Elf_Header_Type_Format();
+            std::cout << '\t' << '\t' << "machine: " << Elf_Header_Machine_Format() << std::endl;
+
+            std::cout << '\t' << "version: " << Elf_Header_Version_Format();
+            std::cout << '\t' << "entry: " << Elf_Header_Entry_Format() << std::endl;
+
+            std::cout << '\t' << "phoff: " << Elf_Header_Phoff_Format();
+            std::cout << '\t' << "shoff: " << Elf_Header_Shoff_Format() << std::endl;
+
+            std::cout << '\t' << "flags: " << Elf_Header_Flags_Format();
+            std::cout << '\t' << "ehsize: " << Elf_Header_Ehsize_Format() << std::endl;
+
+            std::cout << '\t' << "phentsize: " << Elf_Header_Phentsize_Format();
+            std::cout << '\t' << "phnum: " << Elf_Header_Phnum_Format() << std::endl;
+
+            std::cout << '\t' << "shentsize: " << Elf_Header_Shentsize_Format();
+            std::cout << '\t' << "shnum: " << Elf_Header_Shnum_Format() << std::endl;
+
+            std::cout << '\t' << "shstrndx: " << Elf_Header_Shstrndx_Format() << std::endl;
         }
-        std::string Description() const;
-        std::string Value() const;
-    public:
-        std::string Elf_Header_Type_FileOffset() const;
-        std::string Elf_Header_Type_Data() const
-        {
-            uint16_t type = elf_header_.e_type;
-            return detail::ToHexByte(type);
-        }
-        std::string Elf_Header_Type_Description() const;
-        std::string Elf_Header_Type_Value() const
+        std::string Elf_Header_Ident_Format()
         {
             std::string s;
-            uint16_t type = elf_header_.e_type;
-
+            return s;
+        }
+        std::string Elf_Header_Type_Format()
+        {
+            std::string s;
+            uint16_t type = header_->e_type;
             switch (type) {
                 case ET_NONE:
                     s = "ET_NONE";
                     break;
                 case ET_REL:
-                    s = "ET_REL";
+                    s = "ET_NONE";
                     break;
                 case ET_EXEC:
                     s = "ET_EXEC";
@@ -68,24 +79,15 @@ class Elf_Header
                     s = "ET_CORE";
                     break;
                 default:
-                    s = "Invalid Value";
+                    s = "Invaild Value";
                     break;
             }
             return s;
         }
-    public:
-        std::string Elf_Header_Machine_FileOffset() const;
-        std::string Elf_Header_Machine_Data() const
-        {
-            uint16_t machine = elf_header_.e_machine;
-            return detail::ToHexWord(machine);
-        }
-        std::string Elf_Header_Machine_Description() const;
-        std::string Elf_Header_Machine_Value() const
+        std::string Elf_Header_Machine_Format()
         {
             std::string s;
-            uint16_t machine = elf_header_.e_machine;
-
+            uint16_t machine = header_->e_machine;
             switch (machine) {
                 case EM_NONE:
                     s = "EM_NONE";
@@ -144,74 +146,123 @@ class Elf_Header
                 case EM_VAX:
                     s = "EM_VAX";
                     break;
-                deault:
+                default:
                     s = "Invaild Value";
                     break;
             }
             return s;
         }
+        std::string Elf_Header_Version_Format() const
+        {
+            std::string s;
+            uint32_t version = header_->e_version;
+            switch (version) {
+                case EV_NONE:
+                    s = "EV_NONE";
+                    break;
+                case EV_CURRENT:
+                    s = "EV_CURRENT";
+                    break;
+                default:
+                    s = "Invaild Value";
+                    break;
+            }
+            return s;
+        }
+        std::string Elf_Header_Entry_Format() const
+        {
+            uint32_t entry = header_->e_entry;
+            return detail::ToHexDWordFormat(entry);
+        }
+        std::string Elf_Header_Phoff_Format() const
+        {
+            uint32_t phoff = header_->e_phoff;
+            return detail::ToHexDWordFormat(phoff);
+        }
+        std::string Elf_Header_Shoff_Format() const
+        {
+            uint32_t shoff = header_->e_shoff;
+            return detail::ToHexDWordFormat(shoff);
+        }
+        std::string Elf_Header_Flags_Format() const
+        {
+            uint32_t flags = header_->e_flags;
+            return detail::ToHexDWordFormat(flags);
+        }
+        std::string Elf_Header_Ehsize_Format() const
+        {
+            uint16_t ehsize = header_->e_ehsize;
+            return detail::ToHexWordFormat(ehsize);
+        }
+        std::string Elf_Header_Phentsize_Format() const
+        {
+            uint16_t phentsize = header_->e_phentsize;
+            return detail::ToHexWordFormat(phentsize);
+        }
+        std::string Elf_Header_Phnum_Format() const
+        {
+            uint16_t phnum = header_->e_phnum;
+            return detail::ToHexWordFormat(phnum);
+        }
+        std::string Elf_Header_Shentsize_Format() const
+        {
+            uint16_t shentsize = header_->e_shentsize;
+            return detail::ToHexWordFormat(shentsize);
+        }
+        std::string Elf_Header_Shnum_Format() const
+        {
+            uint16_t shnum = header_->e_shnum;
+            return detail::ToHexWordFormat(shnum);
+        }
+        std::string Elf_Header_Shstrndx_Format() const
+        {
+            uint16_t shstrndx = header_->e_shstrndx;
+            return detail::ToHexWordFormat(shstrndx);
+        }
     public:
-        std::string Elf_Header_Version_FileOffset() const;
-        std::string Elf_Header_Version_Data() const;
-        std::string Elf_Header_Version_Description() const;
-        std::string Elf_Header_Version_Value() const;
-    public:
-        std::string Elf_Header_Entry_FileOffset() const;
-        std::string Elf_Header_Entry_Data() const;
-        std::string Elf_Header_Entry_Description() const;
-        std::string Elf_Header_Entry_Value() const;
-    public:
-        std::string Elf_Header_PHOFF_FileOffset() const;
-        std::string Elf_Header_PHOFF_Data() const;
-        std::string Elf_Header_PHOFF_Description() const;
-        std::string Elf_Header_PHOFF_Value() const;
-    public:
-        std::string Elf_Header_SHOFF_FileOffset() const;
-        std::string Elf_Header_SHOFF_Data() const;
-        std::string Elf_Header_SHOFF_Description() const;
-        std::string Elf_Header_SHOFF_Value() const;
-    public:
-        std::string Elf_Header_FLAGS_FileOffset() const;
-        std::string Elf_Header_FLAGS_Data() const;
-        std::string Elf_Header_FLAGS_Description() const;
-        std::string Elf_Header_FLAGS_Value() const;
-    public:
-        std::string Elf_Header_EHSIZE_FileOffset() const;
-        std::string Elf_Header_EHSIZE_Data() const;
-        std::string Elf_Header_EHSIZE_Description() const;
-        std::string Elf_Header_EHSIZE_Value() const;
-    public:
-        std::string Elf_Header_PHENTSIZE_FileOffset() const;
-        std::string Elf_Header_PHENTSIZE_Data() const;
-        std::string Elf_Header_PHENTSIZE_Description() const;
-        std::string Elf_Header_PHENTSIZE_Value() const;
-    public:
-        std::string Elf_Header_PHNUM_FileOffset() const;
-        std::string Elf_Header_PHNUM_Data() const;
-        std::string Elf_Header_PHNUM_Description() const;
-        std::string Elf_Header_PHNUM_Value() const;
-    public:
-        std::string Elf_Header_SHENTSIZE_FileOffset() const;
-        std::string Elf_Header_SHENTSIZE_Data() const;
-        std::string Elf_Header_SHENTSIZE_Description() const;
-        std::string Elf_Header_SHENTSIZE_Value() const;
-    public:
-        std::string Elf_Header_SHNUM_FileOffset() const;
-        std::string Elf_Header_SHNUM_Data() const;
-        std::string Elf_Header_SHNUM_Description() const;
-        std::string Elf_Header_SHNUM_Value() const;
-    public:
-        std::string Elf_Header_SHSTRNDX_FileOffset() const;
-        std::string Elf_Header_SHSTRNDX_Data() const;
-        std::string Elf_Header_SHSTRNDX_Description() const;
-        std::string Elf_Header_SHSTRNDX_Value() const;
+        uint16_t Elf_Header_Type() const
+        {
+            return header_->e_type;
+        }
+        uint32_t Elf_Header_Phoff() const
+        {
+            return header_->e_phoff;
+        }
+        uint32_t Elf_Header_Shoff() const
+        {
+            return header_->e_shoff;
+        }
+        uint16_t Elf_Header_Ehsize() const
+        {
+            return header_->e_ehsize;
+        }
+        uint16_t Elf_Header_Phentsize() const
+        {
+            return header_->e_phentsize;
+        }
+        uint16_t Elf_Header_Phnum() const
+        {
+            return header_->e_phnum;
+        }
+        uint16_t Elf_Header_Shentsize() const
+        {
+            return header_->e_shentsize;
+        }
+        uint16_t Elf_Header_Shnum() const
+        {
+            return header_->e_shnum;
+        }
+        uint16_t Elf_Header_Shstrndx() const
+        {
+            return header_->e_shstrndx;
+        }
     private:
-        Elf32_Ehdr elf_header_;
-        std::string elf_header_str_;
-        std::vector<uint8_t> elf_header_vec_;
+        BinaryFile* file_;
         off_t offset_;
         off_t size_;
-        BinaryFile file_;
+        Elf32_Ehdr* header_;
 };
 
 }//namespace elfview 
+
+#endif
