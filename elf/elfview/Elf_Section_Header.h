@@ -65,6 +65,9 @@ class Elf_Section_Header
             Elf_Section_Entry entry(shdr_[index]);
             uint32_t offset = entry.Section_Offset();
             uint32_t size = entry.Section_Size();
+            if (entry.Section_Type() == SHT_NOBITS)
+                //
+                return file_->HexFormat(offset, 0);
             return file_->HexFormat(offset, size);
         }
     public:
