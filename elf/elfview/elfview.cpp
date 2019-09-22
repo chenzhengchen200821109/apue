@@ -39,8 +39,14 @@ int main(int argc, char* argv[])
     offset = header.Elf_Header_Phoff();
     elfview::Elf_Program_Header phdr(&file, offset, size);
 
-    for (uint16_t i = 0; i < shnum; i++)
-        shdr.Elf_Section_Header_Format(i);
+    //
+    if (!header.Is_ELF_File()) {
+        std::cout << "This is not an ELF file" << std::endl;
+        return 0;
+    }
+    //
+    std::cout << "Elf header: " << std::endl;
+    header.Elf_Header_Summary_Format();
 
     type = header.Elf_Header_Type();
     if (type == ET_EXEC || type == ET_DYN) {
@@ -57,14 +63,19 @@ int main(int argc, char* argv[])
                 if (sstart >= start && send <= end) {
                     std::cout << '\t' << "Section[" << j << "]:" << std::endl;
                     shdr.Elf_Section_Header_Format(j);
+                    std::cout << '\t' << "This section's Raw data: " << std::endl;
+                    std::cout << shdr.Elf_Section_Format(j);
                 }
             }
             std::cout << '\t' << "------------------------------------------------------------------------------------------------" << std::endl;
         }
+    } else if (type == ET_REL) {
+        std::cout << "A relocatable file" << std::endl;
+    } else if (type == ET_CORE) {
+        std::cout << "A core file" << std::endl;
+    } else {
+        std::cout << "Error: An unknown type for this file" << std::endl;
     }
-
-
-
 
     return 0;
 }

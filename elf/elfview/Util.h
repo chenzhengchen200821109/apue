@@ -14,6 +14,7 @@ namespace detail
 
 std::string ToHexByte(uint8_t value); 
 std::string ToHexByteFormat(uint8_t value);
+std::string ToASCIIByte(uint8_t value);
 std::string ToHexWord(uint16_t value);
 std::string ToHexWordFormat(uint16_t value);
 std::string ToHexDWord(uint32_t value);

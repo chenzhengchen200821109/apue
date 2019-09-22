@@ -1,69 +1,34 @@
 #include "Elf_Ident.h"
+#include "Util.h"
 #include <stdio.h>
 
 namespace elfview
 {
 
-std::string Elf_Ident::FileOffset() const
-{
-    std::string s;
-    char hex[9] = { 0 };
-    snprintf(hex, 9, "%08X", (uint32_t)offset_);
-    s.append(hex, 8);
-    return s;
-}
-
-std::string Elf_Ident::Data() const
-{
-    return elf_ident_str_;
-}
-
-std::string Elf_Ident::Description() const
-{
-    std::string desc_("Elf header ident");
-    return desc_;
-}
-
-std::string Elf_Ident::Value() const
-{
-    return value_;
-}
-
 std::string Elf_Ident::Elf_Ident_MAGO() const 
 {
-    return elf_ident_str_.substr(0, 2);
+    return detail::ToHexByte(ident_[0]);
 }
 
 std::string Elf_Ident::Elf_Ident_MAG1() const
 {
-    return elf_ident_str_.substr(1*2, 2);
+    return detail::ToASCIIByte(ident_[1]); 
 }
 
 std::string Elf_Ident::Elf_Ident_MAG2() const
 {
-    return elf_ident_str_.substr(2*2, 2);
+    return detail::ToASCIIByte(ident_[2]);
 }
 
 std::string Elf_Ident::Elf_Ident_MAG3() const
 {
-    return elf_ident_str_.substr(3*2, 2);
+    return detail::ToASCIIByte(ident_[3]);
 }
 
-std::string Elf_Ident::Elf_Ident_CLASS_Data() const
-{
-    return elf_ident_str_.substr(4*2, 2);
-}
-
-std::string Elf_Ident::Elf_Ident_CLASS_Description() const
-{
-    std::string s("the architecture of binary");
-    return s;
-}
-
-std::string Elf_Ident::Elf_Ident_CLASS_Value() const
+std::string Elf_Ident::Elf_Ident_CLASS() const
 {
     std::string s;
-    switch (elf_ident_vec_[4]) {
+    switch (ident_[4]) {
         case ELFCLASSNONE:
             s = "ELFCLASSNONE";
             break;
@@ -80,21 +45,10 @@ std::string Elf_Ident::Elf_Ident_CLASS_Value() const
     return s;
 }
 
-std::string Elf_Ident::Elf_Ident_DATA_Data() const
-{
-    return elf_ident_str_.substr(5*2, 2);
-}
-
-std::string Elf_Ident::Elf_Ident_DATA_Description() const
-{
-    std::string s("the data encoding of the processor-specific data");
-    return s;
-}
-
-std::string Elf_Ident::Elf_Ident_DATA_Value() const
+std::string Elf_Ident::Elf_Ident_DATA() const
 {
     std::string s;
-    switch (elf_ident_vec_[5]) {
+    switch (ident_[5]) {
         case ELFDATANONE:
             s = "ELFDATANONE";
             break;
@@ -111,21 +65,10 @@ std::string Elf_Ident::Elf_Ident_DATA_Value() const
     return s;
 }
 
-std::string Elf_Ident::Elf_Ident_VERSION_Data() const
-{
-    return elf_ident_str_.substr(6*2, 2);
-}
-
-std::string Elf_Ident::Elf_Ident_VERSION_Description() const
-{
-    std::string s("the version number of the ELF specification");
-    return s;
-}
-
-std::string Elf_Ident::Elf_Ident_VERSION_Value() const
+std::string Elf_Ident::Elf_Ident_VERSION() const
 {
     std::string s;
-    switch(elf_ident_vec_[6]) {
+    switch(ident_[6]) {
         case EV_NONE:
             s = "EV_NONE";
             break;
@@ -139,24 +82,10 @@ std::string Elf_Ident::Elf_Ident_VERSION_Value() const
     return s;
 }
 
-std::string Elf_Ident::Elf_Ident_OSABI_Data() const
-{
-    return elf_ident_str_.substr(7*2, 2);
-}
-
-std::string Elf_Ident::Elf_Ident_OSABI_Description() const
-{
-    std::string s("the operating system and ABI targeted");
-    return s;
-}
-
-std::string Elf_Ident::Elf_Ident_OSABI_Value() const
+std::string Elf_Ident::Elf_Ident_OSABI() const
 {
     std::string s;
-    switch(elf_ident_vec_[7]) {
-        //case ELFOSABI_NONE:
-        //    s = "ELFOSABI_NONE";
-        //    return s;
+    switch(ident_[7]) {
         case ELFOSABI_SYSV:
             s = "ELFOSABI_SYSV";
             break;
@@ -194,21 +123,10 @@ std::string Elf_Ident::Elf_Ident_OSABI_Value() const
     return s;
 }
 
-std::string Elf_Ident::Elf_Ident_ABIVERSION_Data() const
-{
-    return elf_ident_str_.substr(8*2, 2);
-}
-
-std::string Elf_Ident::Elf_Ident_ABIVERSION_Description() const
-{
-    std::string s("the version of the ABI");
-    return s;
-}
-
-std::string Elf_Ident::Elf_Ident_ABIVERSION_Value() const
+std::string Elf_Ident::Elf_Ident_ABIVERSION() const
 {
     std::string s;
-    switch(elf_ident_vec_[8]) {
+    switch(ident_[8]) {
         case 0:
             s = "0";
             break;
@@ -219,20 +137,13 @@ std::string Elf_Ident::Elf_Ident_ABIVERSION_Value() const
     return s;
 }
 
-std::string Elf_Ident::Elf_Ident_PAD_Data() const
+std::string Elf_Ident::Elf_Ident_PAD() const
 {
-    return elf_ident_str_.substr(9*2, 2);
-}
-
-std::string Elf_Ident::Elf_Ident_PAD_Description() const
-{
-    std::string s("Start of padding");
+    std::string s;
+    for (uint32_t i = 9; i < size_; i++) {
+        s += detail::ToASCIIByte(ident_[i]);
+    } 
     return s;
-}
-
-std::string Elf_Ident::Elf_Ident_PAD_Value() const
-{
-    return Elf_Ident_PAD_Data();
 }
 
 }//namespace elfview 

@@ -25,8 +25,9 @@ Util_Test: Util_Test.cpp Util.cpp
 	g++ -std=c++11 -g Util_Test.cpp Util.cpp -o Util_Test -lglog
 
 elfview: elfview.cpp
-	g++ -std=c++11 -g elfview.cpp Util.cpp BinaryFile.cpp -o elfview -lglog
+	g++ -std=c++11 -g elfview.cpp Util.cpp BinaryFile.cpp Elf_Ident.cpp -o elfview -lglog
 
 clean:
 	rm -rf BinaryFile_Test Elf_Ident_Test Elf_Header_Test test a.out Elf_Program_Header_Test Util_Test Elf_Section_Header_Test Elf_Section_Shstrtab_Test elfview
+	rm -rf .gdb* .*.swp .*.h.swp
 

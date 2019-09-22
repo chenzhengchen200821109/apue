@@ -6,6 +6,7 @@
 #include <string>
 #include <iostream>
 #include "BinaryFile.h"
+#include "Elf_Ident.h"
 #include "Util.h"
 
 namespace elfview 
@@ -18,6 +19,7 @@ class Elf_Header
             : offset_(0)
             , size_(sizeof(Elf32_Ehdr))
             , file_(file) 
+            , ident_(file_)
         {
             header_ = (Elf32_Ehdr *)file_->BasePoint(offset_);
         }
@@ -32,7 +34,16 @@ class Elf_Header
         }
         void Elf_Header_Summary_Format()
         {
-            std::cout << '\t' << "ident: " << Elf_Header_Ident_Format() << std::endl;
+            std::cout << '\t' << "ident:" << std::endl; 
+            std::cout << '\t' << '\t' << "magic: " << ident_.Elf_Ident_MAGO() << " " << ident_.Elf_Ident_MAG1();
+            std::cout << " " << ident_.Elf_Ident_MAG2() << " " << ident_.Elf_Ident_MAG3() << std::endl;
+            std::cout << '\t' << '\t' << "class: " << ident_.Elf_Ident_CLASS() << std::endl;
+            std::cout << '\t' << '\t' << "data: " << ident_.Elf_Ident_DATA() << std::endl;
+            std::cout << '\t' << '\t' << "version: " << ident_.Elf_Ident_VERSION() << std::endl;
+            std::cout << '\t' << '\t' << "osabi: " << ident_.Elf_Ident_OSABI() << std::endl;
+            std::cout << '\t' << '\t' << "abiversion: " << ident_.Elf_Ident_ABIVERSION() << std::endl;
+            std::cout << '\t' << '\t' << "pad: " << ident_.Elf_Ident_PAD() << std::endl;
+            //
             std::cout << '\t' << "type: " << Elf_Header_Type_Format();
             std::cout << '\t' << '\t' << "machine: " << Elf_Header_Machine_Format() << std::endl;
 
@@ -53,12 +64,16 @@ class Elf_Header
 
             std::cout << '\t' << "shstrndx: " << Elf_Header_Shstrndx_Format() << std::endl;
         }
-        std::string Elf_Header_Ident_Format()
+        bool Is_ELF_File() const
         {
-            std::string s;
-            return s;
-        }
-        std::string Elf_Header_Type_Format()
+            if (ident_.Elf_Ident_MAGO() == "7F" &&
+                    ident_.Elf_Ident_MAG1() == "E" &&
+                    ident_.Elf_Ident_MAG2() == "L" &&
+                    ident_.Elf_Ident_MAG3() == "F")
+                return true;
+            return false;
+        } 
+        std::string Elf_Header_Type_Format() const 
         {
             std::string s;
             uint16_t type = header_->e_type;
@@ -261,6 +276,7 @@ class Elf_Header
         off_t offset_;
         off_t size_;
         Elf32_Ehdr* header_;
+        Elf_Ident ident_;
 };
 
 }//namespace elfview 

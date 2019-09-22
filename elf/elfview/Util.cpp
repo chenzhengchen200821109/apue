@@ -26,6 +26,15 @@ std::string ToHexByteFormat(uint8_t value)
     return s;
 }
 
+std::string ToASCIIByte(uint8_t value)
+{
+    std::string s;
+    char hex[2] = { 0 };
+    snprintf(hex, 2, "%s", (char *)(&value));
+    s.append(hex, 1);
+    return s;
+}
+
 std::string ToHexWord(uint16_t value)
 {
     std::string s;
